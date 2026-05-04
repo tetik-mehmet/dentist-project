@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  doctor
+  assistant
+}
+
+enum AppointmentStatus {
+  scheduled
+  completed
+  cancelled
+  no_show
+}
+
+enum TreatmentStatus {
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+enum StepStatus {
+  pending
+  completed
+  skipped
+}
+
+enum PaymentStatus {
+  pending
+  partial
+  paid
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Clinic {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  patients     Patient[]
+  appointments Appointment[]
+  treatments   Treatment[]
+  payments     Payment[]
+  files        File[]
+  auditLogs    AuditLog[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      Role     @default(assistant)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  appointments Appointment[]
+  auditLogs    AuditLog[]
+}
+
+model Patient {
+  id          String    @id @default(uuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String
+  dateOfBirth DateTime?
+  address     String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  appointments Appointment[]
+  treatments   Treatment[]
+  payments     Payment[]
+  files        File[]
+}
+
+model Appointment {
+  id          String            @id @default(uuid())
+  startTime   DateTime
+  endTime     DateTime
+  status      AppointmentStatus @default(scheduled)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  clinicId  String
+  clinic    Clinic  @relation(fields: [clinicId], references: [id])
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+  doctorId  String
+  doctor    User    @relation(fields: [doctorId], references: [id])
+}
+
+model Treatment {
+  id          String          @id @default(uuid())
+  title       String
+  description String?
+  status      TreatmentStatus @default(planned)
+  totalCost   Decimal         @default(0) @db.Decimal(10, 2)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  clinicId  String
+  clinic    Clinic  @relation(fields: [clinicId], references: [id])
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  steps    TreatmentStep[]
+  payments Payment[]
+}
+
+model TreatmentStep {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      StepStatus @default(pending)
+  order       Int        @default(0)
+  cost        Decimal    @default(0) @db.Decimal(10, 2)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  treatmentId String
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  amount      Decimal       @db.Decimal(10, 2)
+  totalAmount Decimal       @db.Decimal(10, 2)
+  paidAmount  Decimal       @default(0) @db.Decimal(10, 2)
+  status      PaymentStatus @default(pending)
+  notes       String?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  clinicId    String
+  clinic      Clinic    @relation(fields: [clinicId], references: [id])
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  treatmentId String?
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id])
+}
+
+model File {
+  id           String   @id @default(uuid())
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  key          String
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  clinicId  String
+  clinic    Clinic  @relation(fields: [clinicId], references: [id])
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String
+  entityId   String?
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+}
