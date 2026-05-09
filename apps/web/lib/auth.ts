@@ -1,16 +1,24 @@
-import api from './api';
 import { AuthUser } from '@/types/auth';
+import api from './api';
 
 export async function login(email: string, password: string): Promise<AuthUser> {
-  const res = await api.post<{ user: AuthUser }>('/api/auth/login', {
-    email,
-    password,
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
   });
-  return res.data.user;
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw { response: { data } };
+  }
+
+  return data.user;
 }
 
 export async function logout(): Promise<void> {
-  await api.post('/api/auth/logout');
+  await fetch('/api/auth/logout', { method: 'POST' });
 }
 
 export async function getMe(): Promise<AuthUser | null> {

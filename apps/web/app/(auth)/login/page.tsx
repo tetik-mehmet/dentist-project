@@ -34,7 +34,6 @@ export default function LoginPage() {
       await login(data.email, data.password);
       toast.success('Giriş başarılı, yönlendiriliyorsunuz...');
       router.push('/dashboard');
-      router.refresh();
     } catch (err: any) {
       toast.error(
         err?.response?.data?.message || 'Giriş başarısız. Bilgilerinizi kontrol edin.',
